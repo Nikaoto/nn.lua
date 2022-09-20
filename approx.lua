@@ -1,5 +1,4 @@
--- Graph a function and find its local minimum using a simple
--- naive dy/dx calculation
+-- Approximate a function using a neural net while graphing both
 local inspect = require("inspect")
 local nn = require("nn")
 require("util")
@@ -15,8 +14,8 @@ local x_scale = 40
 local x_off, y_off = -30, -140
 local points = {}
 local tangent_points = {}
-local cartesian_plain_ox = 300
-local cartesian_plain_oy = 500
+local cartesian_plane_ox = 300
+local cartesian_plane_oy = 500
 local recalc_points = false
 local vline_girth = 1
 local vline_length = 10
@@ -55,18 +54,18 @@ end
 
 function calc_points()
    points = {}
-   for x=-cartesian_plain_ox, lg.getWidth()/3, 0.01 do
+   for x=-cartesian_plane_ox, lg.getWidth()/3, 0.01 do
       local y = f(x)*y_scale
-      if y > -cartesian_plain_oy and y < WIDTH then
+      if y > -cartesian_plane_oy and y < WIDTH then
          table.insert(points, {x=x*x_scale, y=y})
       end
    end
 
    predicted_points = {}
    if f2 then
-      for x=-cartesian_plain_ox, lg.getWidth()/3, 0.01 do
+      for x=-cartesian_plane_ox, lg.getWidth()/3, 0.01 do
          y = f2(x)*y_scale
-         if y > -cartesian_plain_oy and y < WIDTH then
+         if y > -cartesian_plane_oy and y < WIDTH then
             table.insert(predicted_points, {x=x*x_scale, y=y})
          end
       end
@@ -125,13 +124,13 @@ function love.draw()
    -- Draw y line
    lg.setColor(1, 0, 0)
    lg.line(
-      cartesian_plain_ox + x_off, 0,
-      cartesian_plain_ox + x_off, HEIGHT)
+      cartesian_plane_ox + x_off, 0,
+      cartesian_plane_ox + x_off, HEIGHT)
    -- Draw x line
    lg.setColor(0, 0, 1)
    lg.line(
-          0, cartesian_plain_oy + y_off,
-      WIDTH, cartesian_plain_oy + y_off)
+          0, cartesian_plane_oy + y_off,
+      WIDTH, cartesian_plane_oy + y_off)
 
    -- Draw vert lines on x line
    local xs
@@ -143,12 +142,12 @@ function love.draw()
       xs = x_scale
    end
    -- Draw positive side
-   for x=cartesian_plain_ox+x_off, WIDTH, xs do
-      vert_line(math.floor(x), cartesian_plain_oy+y_off)
+   for x=cartesian_plane_ox+x_off, WIDTH, xs do
+      vert_line(math.floor(x), cartesian_plane_oy+y_off)
    end
    -- Draw negative side
-   for x=cartesian_plain_ox+x_off, 0, -xs do
-      vert_line(math.floor(x), cartesian_plain_oy+y_off)
+   for x=cartesian_plane_ox+x_off, 0, -xs do
+      vert_line(math.floor(x), cartesian_plane_oy+y_off)
    end
 
    -- Draw horiz lines on y line
@@ -162,12 +161,12 @@ function love.draw()
    end
    if ys >= 1 then
       -- Draw positive side
-      for y=cartesian_plain_oy+y_off, 0, -ys do
-         horiz_line(cartesian_plain_ox+x_off, math.floor(y))
+      for y=cartesian_plane_oy+y_off, 0, -ys do
+         horiz_line(cartesian_plane_ox+x_off, math.floor(y))
       end
       -- Draw negative side
-      for y=cartesian_plain_oy+y_off, HEIGHT, ys do
-         horiz_line(cartesian_plain_ox+x_off, math.floor(y))
+      for y=cartesian_plane_oy+y_off, HEIGHT, ys do
+         horiz_line(cartesian_plane_ox+x_off, math.floor(y))
       end
    end
 
@@ -175,8 +174,8 @@ function love.draw()
    lg.setColor(1, 1, 1, 0.5)
    for i, p in ipairs(points) do
       lg.points(
-         cartesian_plain_ox + p.x + x_off,
-         cartesian_plain_oy - p.y + y_off)
+         cartesian_plane_ox + p.x + x_off,
+         cartesian_plane_oy - p.y + y_off)
    end
 
    -- Draw all points of the predicted fn graph
@@ -184,8 +183,8 @@ function love.draw()
    for i, p in ipairs(predicted_points) do
       lg.circle(
          "fill",
-         cartesian_plain_ox + p.x + x_off,
-         cartesian_plain_oy - p.y + y_off, 1)
+         cartesian_plane_ox + p.x + x_off,
+         cartesian_plane_oy - p.y + y_off, 1)
    end
 
    -- Print stats
