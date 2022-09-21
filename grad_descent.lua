@@ -1,5 +1,5 @@
 -- Graph a function and find its local minimum using a simple
--- naive dy/dx calculation
+-- naive dy/dx calculation.
 local lg = love.graphics
 local abs = math.abs
 local pow = math.pow

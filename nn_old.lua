@@ -1,48 +1,39 @@
--- nn
-require("util")
-local inspect = require("inspect")
+local nn = {}
+
+-- Defaults
+local def = {
+   act_fns = {},
+   d_act_fns = {},
+   diff_step = 0.001,
+   learning_rate = 0.001,
+   epochs = 10000,
+   shuffle_training_data = false,
+   training_log_freq = 0.01,
+   weight_min = -5,
+   weight_max = 5
+}
+
 local fmt = string.format
 
-function sum_layer(arr)
-   local sum = 0
+local function sq(x) return x*x end
+
+local function map(arr, fn)
+   local new_arr = {}
    for i, _ in ipairs(arr) do
-      sum = sum + arr[i]
+      new_arr[i] = fn(arr[i], i)
    end
-   return sum
+   return new_arr
 end
 
-function run_model(net, act_fn)
-   -- Input layer sum
-   local prv_sum = sum_layer(net[1])
-
-   -- Go thru hidden layers and count sums
-   local tmp_layer
-   local layer_idx = 2
-   while layer_idx <= #net do
-      tmp_layer = {}
-      for wi, _ in ipairs(net[layer_idx]) do
-         local activation = act_fn(
-            net[layer_idx][wi] * prv_sum)
-         table.insert(tmp_layer, activation)
-      end
-
-      prv_sum = sum_layer(tmp_layer)
-      layer_idx = layer_idx + 1
+local function calloc_tbl(n, data)
+   local tbl = {}
+   for i=1, n do
+      table.insert(tbl, data)
    end
-
-   -- Output layer is in tmp_layer
-   return tmp_layer
+   return tbl
 end
 
--- Insert inputs into first layer of neural net
-function insert_inputs(net, inputs)
-   for i, _ in ipairs(net[1]) do
-      net[1][i] = inputs[i]
-   end
-end
-
--- Calculate the loss of a single output layer
-function calc_loss(actual, desired)
+local function calc_loss(actual, desired)
    local loss = 0
    for i, _ in ipairs(actual) do
       loss = loss + sq(actual[i] - desired[i])
@@ -50,144 +41,270 @@ function calc_loss(actual, desired)
    return loss
 end
 
--- Returns training data shaped like:
--- {
---   { inputs: {...}, outputs: {...} },
---   { inputs: {...}, outputs: {...} },
---   ...
--- }
-function generate_training_data(fn, n, seed)
-   local data = {}
-   math.randomseed(seed or os.time())
-   for i=1, n do
-      local a = math.random(-50, 50)
-      local ans = fn(a)
-      data[i] = { inputs={a, b}, outputs={ans}}
-   end
-   return data
+local function calc_d_loss(actual, desired)
+   return (actual - desired) * 2
 end
 
-function main()
-   -- Init neural net
-   local fn_to_discover = function(a)
-      return a*a
+-- Shuffle array in place
+local function shuffle(arr)
+   for i=#arr, 1, -1 do
+      local j = math.random(1, i)
+      arr[j], arr[i] = arr[i], arr[j]
    end
-   local diff_step = 0.0001
-   local learning_rate = 0.000000000001
-   local input_layer = {1}
-   local hidden_layer_1 = rand_arr(-5, 5, 4, 123)
-   local hidden_layer_2 = rand_arr(-5, 5, 4, 456)
-   --local hidden_layer_3 = rand_arr(-5, 5, 4,  789)
-   local output_layer = {3}
-   local iterations = 16000
-   local print_percent = 0.01
+end
+
+local function lerp(a, b, p)
+   return a + (b-a)*p
+end
+
+local function rand_weight(min, max)
+   return lerp(min, max, math.random(0, 1000) / 1000)
+end
+
+function nn.new_neural_net(opts)
+   if not opts.neuron_counts then return nil end
+   local neuron_counts = opts.neuron_counts
+   local seed          = opts.seed       or os.time()
+   local weight_min    = opts.weight_min or def.weight_min
+   local weight_max    = opts.weight_max or def.weight_max
+   local act_fns       = opts.act_fns    or def.act_fns
+   local d_act_fns     = opts.d_act_fns  or def.d_act_fns
+   local rw = function()
+      return rand_weight(weight_min, weight_max)
+   end
+   local rb = rw
+
+   math.randomseed(seed)
+
+   -- Create net with its neurons
    local net = {
-      input_layer,
-      hidden_layer_1,
-      hidden_layer_2,
-      --hidden_layer_3,
-      output_layer
+      act_fns = act_fns,
+      d_act_fns = d_act_fns,
+      neurons = map(neuron_counts, function(c, i)
+         return calloc_tbl(c, i)
+      end)
    }
 
-   -- Activation functions to choose from: relu, linear
-   local activation_fn = linear
+   -- Create weights
+   net.weights = {}
+   for li=1, #net.neurons-1 do
+      net.weights[li] = {}
+      for i=1, #net.neurons[li] * #net.neurons[li+1] do
+         table.insert(net.weights[li], rw())
+      end
+   end
 
-   print("\n------- Initial neural net:")
-   print(inspect(net))
+   -- Create biases
+   net.biases = map(net.neurons, function(layer)
+      return map(layer, function(neuron) return rb() end)
+   end)
 
-   -- Init testing/training data
-   local training_data = generate_training_data(
-      fn_to_discover, 100, 87)
-   local testing_data = generate_training_data(
-      fn_to_discover, 3, 123)
+   --[[ NOTE:
+      Weights are defined left-to-right.
+      Meaning, in a net like this:
+      +-----------------+
+      | in  hidden  out |
+      | --  ------  --- |
+      |      c          |
+      | a    d  g    i  |
+      | b    e  h    k  |
+      |      f          |
+      +-----------------+
+      The weights are defined as:
+      {
+        { ac, ad, ae, af, bc, bd, be, bf },
+        { cg, ch, dh, dh, eg, eh, fg, fh },
+        { gi, gk, hi, hk }
+      }
 
-   --[[ Training loop ]]--
-   local i = 1
-   while i <= iterations do
-      -- Calculate net loss and gradients of each weight
-      local total_loss = 0
-      local avg_loss = 0
-      local step = diff_step
+      The reason behind this is that it becomes easier to index
+      the weights relative to the neuron indices.
+   ]]--
+
+   return net
+end
+
+function nn.insert_inputs(net, inputs)
+   if #net.neurons < 1 then error("invalid net") end
+   if #inputs ~= #net.neurons[1] then
+      error("#inputs ~= #net.neurons[1]")
+   end
+
+   for neuron_idx, _ in ipairs(net.neurons[1]) do
+      net.neurons[1][neuron_idx] = inputs[neuron_idx]
+   end
+end
+
+
+-- Feeds forward the inputs and returns output layer
+function nn.feedforward(net, opts)
+   if opts.inputs then
+      nn.insert_inputs(net, opts.inputs)
+   end
+
+   for li=2, #net.neurons, 1 do
+      for ni, _ in ipairs(net.neurons[li]) do
+         local sum = 0
+
+         -- 'plni' stands for 'previous layer neuron index'
+         for plni, _ in ipairs(net.neurons[li-1]) do
+            local wi = ni + (plni-1) * #net.neurons[li]
+            local weight = net.weights[li-1][wi]
+            local activation = net.neurons[li-1][plni]
+            sum = sum +  activation * weight
+         end
+
+         -- Apply activation function
+         local act = sum + net.biases[li][ni]
+         if net.act_fns and net.act_fns[li] then
+            net.neurons[li][ni] = net.act_fns[li](act)
+         else
+            net.neurons[li][ni] = act
+         end
+      end
+   end
+
+   return net.neurons[#net.neurons]
+end
+
+function nn.train(net, training_data, opts)
+   if not opts then opts = {} end
+   local learning_rate = opts.learning_rate or def.learning_rate
+   local step          = opts.diff_step or def.diff_step
+   local epochs        = opts.epochs or def.epochs
+   local shuf          = opts.shuffle or def.shuffle_training_data
+   local log_freq      = opts.log_freq or def.training_log_freq
+   local log_every     = 1 / log_freq
+
+   for iter=1, epochs do
+      local derivs = {}
       local grad_mat = {}
+      local bias_grad_mat = {}
+      local avg_loss = 0
 
-      shuffle(training_data)
-      --local j = math.random(1, #training_data)
-      for j, _ in ipairs(training_data) do
-         insert_inputs(net, training_data[j].inputs)
-         local results = run_model(net, activation_fn)
-         local l1 = calc_loss(results, training_data[j].outputs)
-         total_loss = total_loss + l1
+      if shuf then shuffle(training_data) end
+      for i, _ in ipairs(training_data) do
+         local out1 = nn.feedforward(net, {
+            inputs = training_data[i].inputs })
+         local loss1 = calc_loss(out1, training_data[i].outputs)
+         avg_loss = avg_loss + loss1 / #training_data
 
-         -- Last hidden layer loss
-         -- local loss_vec = {}
-         -- local li = #net - 1
-         -- loss_vec[li] = 0
-         -- if not grad_mat[li] then
-         --    grad_mat[li] = map(net[li], function(w) return 0 end)
-         -- end
-         -- for wi, _ in ipairs(net[li]) do
-         --    local w1, w2 = net[li][wi], net[li][wi] + step
-         --    net[li][wi] = w2
-         --    local l2 = calc_loss(run_model(net, activation_fn),
-         --                         training_data[j].outputs)
-         --    local grad = (l2 - l1) / (w2 - w1)
-         --    net[li][wi] = w1
-         --    grad_mat[li][wi] = grad_mat[li][wi] + grad / #training_data
-         --    loss_vec[li] = loss_vec[li] + l2
-         -- end
+         -- Calculate grad for the last weight layer (hidden->output)
+         --[[local li = #net.weights
+         if not grad_mat[li] then grad_mat[li] = {} end
+         if not bias_grad_mat[li] then bias_grad_mat[li] = {} end
+         if not derivs[li] then derivs[li] = {} end
 
-         for li=(#net-1), 2, -1 do
-            if not grad_mat[li] then
-               grad_mat[li] = map(net[li], function(w) return 0 end)
+         for oni, onv in ipairs(net.neurons[li+1]) do
+            local d_loss = calc_d_loss(onv, training_data[i].outputs[oni])
+            local d_act = net.d_act_fns[li+1] and net.d_act_fns[li+1](onv) or 1
+            for wi=oni, #net.weights[li], #net.neurons[li+1] do
+               local hni = math.ceil(wi / #net.neurons[li+1])
+               derivs[li][hni] = d_loss * d_act * net.weights[li][wi] +
+                  (derivs[li][hni] or 0)
+               grad_mat[li][wi] = d_loss * d_act * net.neurons[li][hni] +
+                  (grad_mat[li][wi] or 0)
+               bias_grad_mat[li][hni] = d_loss * d_act +
+                  (bias_grad_mat[li][hni] or 0)
             end
+         end
 
-            for wi, _ in ipairs(net[li]) do
-               if not grad_mat[li][wi] then
-                  grad_mat[li][wi] = 0
+         -- Calculate grad for the other hidden layers
+         for li=#net.weights-1, 1, -1 do
+            if not grad_mat[li] then grad_mat[li] = {} end
+            if not bias_grad_mat[li] then bias_grad_mat[li] = {} end
+            if not derivs[li] then derivs[li] = {} end
+
+            for di, dv in ipairs(derivs[li+1]) do
+               local d_act = net.d_act_fns[li+1] and net.d_act_fns[li+1](dv) or 1
+               for wi=di, #net.weights[li], #net.neurons[li+1] do
+                  local hni = math.ceil(wi / #net.neurons[li+1])
+                  derivs[li][hni] = d_act * net.weights[li][wi] +
+                     (derivs[li][hni] or 0)
+                  grad_mat[li][wi] = d_act * net.neurons[li][hni] +
+                     (grad_mat[li][wi] or 0)
+                  bias_grad_mat[li][hni] = d_act +
+                     (bias_grad_mat[li][hni] or 0)
                end
+            end
+         end]]--
 
-               local w1 = net[li][wi]
+         -- [[ CALCULATE USING FORWARD PROP ]]--
+         -- Biases
+         for li, _ in ipairs(net.biases) do
+            if not bias_grad_mat[li] then bias_grad_mat[li] = {} end
+
+            for bi, _ in ipairs(net.biases[li]) do
+               -- Tune bias
+               local b1 = net.biases[li][bi]
+               local b2 = b1 + step
+               net.biases[li][bi] = b2
+   
+               -- Run model
+               local out2 = nn.feedforward(net, {
+                  inputs = training_data[i].inputs })
+   
+               -- Calculate difference in losses of the two runs
+               local loss2 = calc_loss(out2, training_data[i].outputs)
+               local grad = (loss2-loss1) / step
+   
+               -- Reset bias
+               net.biases[li][bi] = b1
+   
+               -- Accumulate gradient
+               bias_grad_mat[li][bi] = (bias_grad_mat[li][bi] or 0) + grad
+            end
+         end
+
+         -- Weights
+         for li, _ in ipairs(net.weights) do
+            if not grad_mat[li] then grad_mat[li] = {} end
+
+            for wi, _ in ipairs(net.weights[li]) do
+               -- Tune weight
+               local w1 = net.weights[li][wi]
                local w2 = w1 + step
-               net[li][wi] = w2
-               local r = run_model(net, activation_fn)
-               local l2 = calc_loss(r, training_data[j].outputs)
-               local grad = (l2 - l1) / (w2 - w1)
-               grad_mat[li][wi] = grad_mat[li][wi] + grad
-               net[li][wi] = w1
+               net.weights[li][wi] = w2
+
+               -- Run model
+               local out2 = nn.feedforward(net, {
+                  inputs = training_data[i].inputs })
+
+               -- Calculate difference in losses of the two runs
+               local loss2 = calc_loss(out2,
+                  training_data[i].outputs)
+               local grad = (loss2-loss1) / step
+
+               -- Reset the weight
+               net.weights[li][wi] = w1
+
+               -- Accumulate gradients in grad_mat
+               grad_mat[li][wi] = (grad_mat[li][wi] or 0) + grad
             end
          end
       end
-      avg_loss = total_loss / #training_data
 
-      if i % (iterations * print_percent) == 0 then
-         print(string.format("iteration = %i, avg_loss = %f",
-            i, avg_loss))
-
-         -- print(string.format("iteration = %i, loss = %f",
-         --    i, l1))
+      -- Log status
+      if iter % log_every == 0 then
+         print(fmt("epoch = %i, avg_loss = %f", iter, avg_loss))
       end
 
       -- Apply nudges to weights
-      for li=(#net - 1), 2, -1 do
-         for wi, _ in ipairs(net[li]) do
+      for li, _ in ipairs(net.weights) do
+         for wi, _ in ipairs(net.weights[li]) do
             local nudge = grad_mat[li][wi] * learning_rate
-            net[li][wi] = net[li][wi] - nudge
+            net.weights[li][wi] = net.weights[li][wi] - nudge
          end
       end
 
-      i = i + 1
+      -- Apply nudges to biases
+      for li, _ in ipairs(net.biases) do
+         for bi, _ in ipairs(net.biases[li]) do
+            local nudge = bias_grad_mat[li][bi] * learning_rate * 10
+            net.biases[li][bi] = net.biases[li][bi] - nudge
+         end
+      end
    end
-
-   -- Run model against testing data
-   print("\n-------- Running against testing data")
-   for j, _ in ipairs(testing_data) do
-      print(string.format("test %i: %s", j, inspect(testing_data[j])))
-      insert_inputs(net, testing_data[j].inputs)
-      print(string.format("result %i: %s", j, inspect(run_model(net, activation_fn))))
-   end
-
-   print("\n-------- Final neural net:")
-   print(inspect(net))
 end
 
-main()
+return nn
