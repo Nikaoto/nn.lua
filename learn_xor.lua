@@ -1,4 +1,4 @@
-inspect = require("inspect")
+local inspect = require("inspect")
 local nn = require("nn")
 
 -- Training data (XOR function)
@@ -12,25 +12,20 @@ local testing_data = training_data
 
 -------------
 print("\nNet")
-math.randomseed(6929)
+math.randomseed(1337)
 local net = nn.new_neural_net({
-   neuron_counts = {2, 3, 1},
-   act_fns = {nn.sigmoid, nn.sigmoid},
-   d_act_fns = {nn.d_sigmoid, nn.d_sigmoid},
-   biases = {
-      {2.8, 2.8},
-      {-4.31,-4.31,-4.31},
-      {-0.68},
-   }
+   neuron_counts = {2, 4, 1},
+   act_fns = {nn.sigmoid},
+   d_act_fns = {nn.d_sigmoid},
 })
 print(inspect(net))
 
 ------------------
 print("\nTraining")
 nn.train(net, training_data, {
-   epochs = 2500,
+   epochs = 1000,
    learning_rate = 0.1,
-   log_freq = 0.01,
+   log_freq = 0.005,
 })
 
 ------------------

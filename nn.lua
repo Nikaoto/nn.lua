@@ -151,9 +151,14 @@ function nn.new_neural_net(opts)
 
    -- Create random biases if none given
    if not biases then
-      biases = map(net.neurons, function(layer)
-         return map(layer, rand_bias)
-      end)
+      biases = {
+         -- Input and output layers have no biases
+         [1] = nil,
+         [#net.neurons] = nil,
+      }
+      for li=2, #net.neurons-1 do
+         biases[li] = map(net.neurons[li], rand_bias)
+      end
    end
    net.biases = biases
 
@@ -173,19 +178,18 @@ function nn.feedforward(net, opts)
 
    for li=2, #net.neurons, 1 do
       for ni, _ in ipairs(net.neurons[li]) do
-         local sum = 0
-
          -- Dot product of previous layer's neurons and weights
+         local dp = 0
          for plni, _ in ipairs(net.neurons[li-1]) do
             -- 'plni' stands for 'previous layer neuron index'
             local wi = ni + (plni-1) * #net.neurons[li]
             local weight = net.weights[li-1][wi]
             local prev_activation = net.neurons[li-1][plni]
-            sum = sum + prev_activation * weight
+            dp = dp + prev_activation * weight
          end
 
          -- Add bias
-         local act = sum -- TODO: + net.biases[li][ni]
+         local act = dp + (net.biases[li] and net.biases[li][ni] or 0)
 
          -- Apply activation function
          if net.act_fns and net.act_fns[li-1] then
@@ -231,7 +235,7 @@ function nn.train(net, training_data, opts)
       end
 
       -- Log status
-      if iter % log_every == 0 then
+      if iter % log_every == 0 or iter == 1 then
          print(("epoch = %i, avg_loss = %g"):format(iter, avg_loss))
       end
    end
@@ -276,7 +280,11 @@ function nn.backprop(net, out, rate)
          next_der[ni1] = (next_der[ni1] or 0) +
                          curr_der[ni2] * a * net.weights[li][wi]
 
-         -- TODO: bnudges
+         if net.biases[li] then
+            bnudges[li][ni1] = -1 * rate * curr_der[ni2] * a *
+                  (net.d_act_fns[li-1] and
+                   net.d_act_fns[li-1](net.neurons[li][ni1]) or 1)
+         end
       end
 
       -- Shift the derivative buffers
@@ -292,7 +300,7 @@ end
 
 function nn.apply_nudges(net, nudges)
    local wnudges = nudges.weights
-   -- TODO: local bnudges = nudges.biases
+   local bnudges = nudges.biases
 
    for li, _ in ipairs(net.weights) do
       for wi, _ in ipairs(net.weights[li]) do
@@ -300,12 +308,11 @@ function nn.apply_nudges(net, nudges)
       end
    end
 
-   -- TODO:
-   -- for li, _ in ipairs(net.biases) do
-   --    for bi, _ in ipairs(net.biases[li]) do
-   --       net.biases[li][bi] = net.biases[li][bi] + bnudges[li][bi]
-   --    end
-   -- end
+   for li, _ in pairs(net.biases) do
+      for bi, _ in ipairs(net.biases[li]) do
+         net.biases[li][bi] = net.biases[li][bi] + bnudges[li][bi]
+      end
+   end
 end
 
 return nn
