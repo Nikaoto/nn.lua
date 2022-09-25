@@ -276,14 +276,13 @@ function nn.backprop(net, out, rate)
    local wnudges = {}
    local bnudges = {}
 
-   local curr_der -- for using the stored derivatives
-   local next_der -- for storing derivatives for propagation
-
-   -- Calc pd_error / pd_output
-   curr_der = map(net.neurons[#net.neurons], function(o, i)
+   -- Stores derivatives for the next layer
+   local next_der = {}
+   -- Stored derivatives for use in the current layer
+   local curr_der = map(net.neurons[#net.neurons], function(o, i)
+       -- For the last hidden layer, we calculate pd_error / pd_output
        return calc_d_err(o, out[i])
    end)
-   next_der = {}
 
    -- Iterate backwards from output layer
    for li=#net.weights, 1, -1 do
