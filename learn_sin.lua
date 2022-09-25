@@ -19,7 +19,6 @@ end
 
 local fn_to_discover = function(a) return math.sin(a) end
 
-
 local SEED = 1337
 
 -- Init
