@@ -25,11 +25,15 @@ It:
 
 ## Screenshots
 
-Approximating a sine wave using a single 100-neuron hidden layer using a ReLU
-activation function.
+Approximating a sine wave in the range [-10, 10] using a single 100-neuron
+hidden layer using a ReLU activation function. The training data is only 100
+random samples from the sine wave from the given range.
 
 After approximately one hour of training:
 ![Sine wave after 1 hour of training](./screenshots/nn-screenshot-approx-sin-relu-1.png)
+
+Notice how the network doesn't care to fit anything beyond the range [-10, 10]
+as it doesn't have the data for it
 
 A close up:
 ![Close up sine wave after 1 hour of training](./screenshots/nn-screenshot-approx-sin-relu-2.png)
