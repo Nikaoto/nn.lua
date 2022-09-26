@@ -63,7 +63,8 @@ function gl.new(opts)
    return graph
 end
 
--- Remap all points according to the scale and offset
+-- Remap all points according to the scale and offset. Should be called after
+-- any changes have been made to the curves passed to the graph.
 function gl.update(graph)
    for _, curve in ipairs(graph.curves) do
       curve.raw_points = {}

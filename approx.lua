@@ -1,86 +1,26 @@
 -- Approximate a function using a neural net while graphing both
-local inspect = require("inspect")
+local graphlove = require("graphlove")
 local nn = require("nn")
-require("util")
 
+local WIDTH, HEIGHT = 1024, 720
 local lg = love.graphics
-local abs = math.abs
-local pow = math.pow
-local sqrt = math.sqrt
-local floor = math.floor
-local f = function(x) return x*x end
-local y_scale = 80
-local x_scale = 40
-local x_off, y_off = -30, -140
-local points = {}
-local tangent_points = {}
-local cartesian_plane_ox = 300
-local cartesian_plane_oy = 500
-local recalc_points = false
-local vline_girth = 1
-local vline_length = 10
-local px = 6 -- will slowly descend
-local step = 1
-local tangent_slope = 0
-WIDTH = lg.getWidth()
-HEIGHT = lg.getHeight()
-local canvas = lg.newCanvas(WIDTH, HEIGHT)
-local recording = false
-local frame_idx = 1
+local function sq(x) return x*x end
+function lerp(a, b, p) return a + (b - a) * p end
+function randf(min, max) return lerp(min, max, math.random(0, 1000) / 1000) end
 
-function vert_line(x, y)
-   local h = vline_length
-   local w = vline_girth
+local net, training_data
+local graph, actual_curve, predicted_curve
+local desired_fn = math.sin
 
-   for x=x-floor(w/2), x+floor(w/2), 1 do
-      lg.line(
-         x, y - math.floor(h/2),
-         x, y + math.floor(h/2)
-      )
+-- Returns a table of points that looks like
+-- {x1, y1, x2, y2, x3...}
+local function generate_points(x_start, x_end, fn)
+   local points = {}
+   for x=x_start, x_end, 0.005 do
+      table.insert(points, x)
+      table.insert(points, fn(x))
    end
-end
-
-function horiz_line(x, y)
-   local w = vline_length
-   local h = vline_girth
-
-   for y=y-floor(h/2), y+floor(h/2), 1 do
-      lg.line(
-         x - math.floor(w/2), y,
-         x + math.floor(w/2), y
-      )
-   end
-end
-
-function calc_points()
-   points = {}
-   for x=-cartesian_plane_ox, lg.getWidth()/3, 0.01 do
-      local y = f(x)*y_scale
-      if y > -cartesian_plane_oy and y < WIDTH then
-         table.insert(points, {x=x*x_scale, y=y})
-      end
-   end
-
-   predicted_points = {}
-   if f2 then
-      for x=-cartesian_plane_ox, lg.getWidth()/3, 0.01 do
-         y = f2(x)*y_scale
-         if y > -cartesian_plane_oy and y < WIDTH then
-            table.insert(predicted_points, {x=x*x_scale, y=y})
-         end
-      end
-   end
-end
-
-local function generate_training_data(fn, n, seed)
-   local data = {}
-   math.randomseed(seed or os.time())
-   for i=1, n do
-      local a = randf(interval_min, interval_max)
-      local ans = fn(a)
-      data[i] = { inputs={a}, outputs={ans}}
-   end
-   return data
+   return points
 end
 
 function love.conf(t)
@@ -88,207 +28,149 @@ function love.conf(t)
 end
 
 function love.load()
-   calc_points()
-   WIDTH = lg.getWidth()
-   HEIGHT = lg.getHeight()
+   love.window.setMode(WIDTH, HEIGHT)
 
+   -- Init neural net
+   math.randomseed(1337)
    net = nn.new_neural_net({
-      seed = os.time(),
-      neuron_counts = {1, 8, 1 },
-      weight_min = -10, weight_max = 10,
-      act_fns = {nil, relu, nil },
-      d_act_fns = {nil, d_relu, nil },
+      neuron_counts = {1, 100, 1},
+      act_fns = {nn.sigmoid},
+      d_act_fns = {nn.d_sigmoid},
    })
-
    training_opts = {
-      epochs = 10,
-      learning_rate = 0.0000001,
+      epochs = 1,
+      learning_rate = 0.00005,
       log_freq = 0.5
    }
 
-   interval_min = -3
-   interval_max = 3
+   -- Desired curve
+   actual_curve = {
+      color = {0, 1, 1, 0.9},
+      points = generate_points(-20, 20, desired_fn),
+   }
 
-   training_data = generate_training_data(f, 100)
+   -- Curve predicted by the neural network
+   predicted_curve = {
+      color = {1, 1, 0, 0.9},
+      points = generate_points(-20, 20, function(x)
+         return nn.feedforward(net, {inputs = {x}})[1]
+      end)
+   }
 
-   f2 = function(x)
-      return nn.feedforward(net, {inputs={x}})[1]
+   -- Generate training data
+   training_data = {}
+   for i=1, 100 do
+      local x = randf(-10, 10)
+      table.insert(training_data, {inputs={x}, outputs={desired_fn(x)}})
    end
+
+   -- Init a graph for our curves
+   graph = graphlove.new({
+      print_info = true,
+      curves = {actual_curve, predicted_curve}
+   })
+   graphlove.update(graph)
 end
 
 function love.draw()
-   if recording then
-      lg.setCanvas(canvas)
-      lg.clear(0, 0, 0, 1)
-   end
-   -- Draw y line
-   lg.setColor(1, 0, 0)
-   lg.line(
-      cartesian_plane_ox + x_off, 0,
-      cartesian_plane_ox + x_off, HEIGHT)
-   -- Draw x line
-   lg.setColor(0, 0, 1)
-   lg.line(
-          0, cartesian_plane_oy + y_off,
-      WIDTH, cartesian_plane_oy + y_off)
-
-   -- Draw vert lines on x line
-   local xs
-   if x_scale < 1 then
-      lg.setColor(1, 0.27, 0)
-      xs = x_scale * 100
-   else
-      lg.setColor(1, 0, 1)
-      xs = x_scale
-   end
-   -- Draw positive side
-   for x=cartesian_plane_ox+x_off, WIDTH, xs do
-      vert_line(math.floor(x), cartesian_plane_oy+y_off)
-   end
-   -- Draw negative side
-   for x=cartesian_plane_ox+x_off, 0, -xs do
-      vert_line(math.floor(x), cartesian_plane_oy+y_off)
-   end
-
-   -- Draw horiz lines on y line
-   local ys
-   if y_scale < 1 then
-      lg.setColor(1, 0.27, 0)
-      ys = y_scale * 100
-   else
-      lg.setColor(1, 0, 1)
-      ys = y_scale
-   end
-   if ys >= 1 then
-      -- Draw positive side
-      for y=cartesian_plane_oy+y_off, 0, -ys do
-         horiz_line(cartesian_plane_ox+x_off, math.floor(y))
-      end
-      -- Draw negative side
-      for y=cartesian_plane_oy+y_off, HEIGHT, ys do
-         horiz_line(cartesian_plane_ox+x_off, math.floor(y))
-      end
-   end
-
-   -- Draw all points of the graph
-   lg.setColor(1, 1, 1, 0.5)
-   for i, p in ipairs(points) do
-      lg.points(
-         cartesian_plane_ox + p.x + x_off,
-         cartesian_plane_oy - p.y + y_off)
-   end
-
-   -- Draw all points of the predicted fn graph
-   lg.setColor(0, 1, 1, 0.9)
-   for i, p in ipairs(predicted_points) do
-      lg.circle(
-         "fill",
-         cartesian_plane_ox + p.x + x_off,
-         cartesian_plane_oy - p.y + y_off, 1)
-   end
-
-   -- Print stats
-   lg.setColor(1, 1, 1)
-   lg.print(
-      string.format(
-         "x_scale = %.4f\ny_scale = %.4f\nx_off = %.4f\ny_off = %.4f\nlearning_rate = %.16f",
-         x_scale, y_scale, x_off, y_off, training_opts.learning_rate))
-   if recording then
-      lg.setCanvas()
-      canvas:newImageData():encode("png", string.format("%03i.png", frame_idx))
-      frame_idx = frame_idx + 1
-   end
-   love.graphics.draw(canvas)
+   graphlove.draw(graph, WIDTH, HEIGHT)
+   lg.print(("learning_rate = %.16f"):format(training_opts.learning_rate),
+            0, 58)
 end
 
-function update_scale(scale, dt, sign)
+local function get_scale_delta(scale, dt, sign)
    local dscale = 40
    local small_dscale = 0.3
-   if abs(scale) < 1 then
-      return scale + sign * dt * small_dscale
+   if math.abs(scale) < 1 then
+      return sign * dt * small_dscale
    else
-      return scale + sign * dt * dscale
+      return sign * dt * dscale
    end
 end
 
-function update_offset(off, dt, sign)
-   local doff = 100
-   return off + sign * dt * doff
+local function get_offset_delta(off, dt, sign)
+   local doff = 300
+   return sign * dt * doff
+end
+
+local is_training = false
+local is_silent_training = false
+
+function love.keypressed(key, scancode, isrepeat)
+   if key == "g" then
+      is_training = not is_training
+   end
 end
 
 function love.update(dt)
-   if love.keyboard.isDown("k") then
-      y_scale = update_scale(y_scale, dt, 1)
-      recalc_points = true
-   elseif love.keyboard.isDown("j") then
-      y_scale = update_scale(y_scale, dt, -1)
-      recalc_points = true
-   end
+   local recalc_points = false
 
-   if love.keyboard.isDown("l") then
-      x_scale = update_scale(x_scale, dt, 1)
-      recalc_points = true
-   elseif love.keyboard.isDown("h") then
-      x_scale = update_scale(x_scale, dt, -1)
-      recalc_points = true
-   end
+   local scale_dx, scale_dy = 0, 0
+   local off_dx, off_dy = 0, 0
 
+   -- Force recalculation
    if love.keyboard.isDown("r") then
       recalc_points = true
    end
 
+   -- Scale y
+   if love.keyboard.isDown("k") then
+      scale_dy = get_scale_delta(graph.y_scale, dt, 1)
+   elseif love.keyboard.isDown("j") then
+      scale_dy = get_scale_delta(graph.y_scale, dt, -1)
+   end
+   graph.y_scale = graph.y_scale + scale_dy
+
+   -- Scale x
+   if love.keyboard.isDown("l") then
+      scale_dx = get_scale_delta(graph.x_scale, dt, 1)
+   elseif love.keyboard.isDown("h") then
+      scale_dx = get_scale_delta(graph.x_scale, dt, -1)
+   end
+   graph.x_scale = graph.x_scale + scale_dx
+
+   -- Move x_off
    if love.keyboard.isDown("left") then
-      x_off = update_offset(x_off, dt, -1)
-      recalc_points = true
+      off_dx = get_offset_delta(graph.x_off, dt, 1)
    elseif love.keyboard.isDown("right") then
-      x_off = update_offset(x_off, dt, 1)
-      recalc_points = true
+      off_dx = get_offset_delta(graph.x_off, dt, -1)
    end
+   graph.x_off = graph.x_off + off_dx
 
+   -- Move y_off
    if love.keyboard.isDown("up") then
-      y_off = update_offset(y_off, dt, -1)
-      recalc_points = true
+      off_dy = get_offset_delta(graph.y_off, dt, 1)
    elseif love.keyboard.isDown("down") then
-      y_off = update_offset(y_off, dt, 1)
-      recalc_points = true
+      off_dy = get_offset_delta(graph.y_off, dt, -1)
+   end
+   graph.y_off = graph.y_off + off_dy
+
+   -- Adjust learning rate
+   if love.keyboard.isDown("=") then
+      training_opts.learning_rate = training_opts.learning_rate * 1.1
+   elseif love.keyboard.isDown("-") then
+      training_opts.learning_rate = training_opts.learning_rate * 0.9
    end
 
+   -- Train
    if love.keyboard.isDown("space") then
       nn.train(net, training_data, training_opts)
       recalc_points = true
-   end
-
-   if love.keyboard.isDown("g") then
-      is_training = true
-   end
-
-   if love.keyboard.isDown("s") then
-      is_training = false
-      is_silent_training = false
-   end
-
-   if love.keyboard.isDown("w") then
-      is_silent_training = true
-   end
-
-   if love.keyboard.isDown("=") then
-      training_opts.learning_rate = training_opts.learning_rate / (10*dt)
-   end
-
-   if love.keyboard.isDown("-") then
-      training_opts.learning_rate = training_opts.learning_rate * (10*dt)
    end
 
    if is_training then
       nn.train(net, training_data, training_opts)
       recalc_points = true
    end
-   if is_silent_training then
-      nn.train(net, training_data, training_opts)
-   end
+
+   recalc_points = recalc_points or
+                   off_dx ~= 0 or off_dy ~= 0 or
+                   scale_dx ~= 0 or scale_dy ~= 0
 
    if recalc_points then
-      calc_points()
-      recalc_points = false
+      predicted_curve.points = generate_points(-20, 20, function(x)
+         return nn.feedforward(net, {inputs = {x}})[1]
+      end)
+      graphlove.update(graph)
    end
 end
