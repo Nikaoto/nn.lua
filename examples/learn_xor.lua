@@ -1,5 +1,7 @@
-local inspect = require("lib/inspect")
 local nn = require("nn")
+
+-- This module is only for pretty-printing a lua table
+local inspect = require("lib/inspect")
 
 -- Training data (XOR function)
 local training_data = {

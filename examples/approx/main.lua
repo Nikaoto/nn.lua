@@ -10,7 +10,22 @@ function randf(min, max) return lerp(min, max, math.random(0, 1000) / 1000) end
 
 local net, training_data
 local graph, actual_curve, predicted_curve
+
+------ Play with these variables ------
 local desired_fn = math.sin
+local desired_fn_interval = {-5, 5}
+local seed = 692
+local net_opts = {
+   neuron_counts = {1, 100, 1},
+   act_fns = {nn.sigmoid},
+   d_act_fns = {nn.d_sigmoid},
+}
+local training_opts = {
+   epochs = 1,
+   learning_rate = 0.001,
+   log_freq = 0.5
+}
+---------------------------------------
 
 -- Returns a table of points that looks like
 -- {x1, y1, x2, y2, x3...}
@@ -31,19 +46,10 @@ function love.load()
    love.window.setMode(WIDTH, HEIGHT)
 
    -- Init neural net
-   math.randomseed(1337)
-   net = nn.new_neural_net({
-      neuron_counts = {1, 100, 1},
-      act_fns = {nn.sigmoid},
-      d_act_fns = {nn.d_sigmoid},
-   })
-   training_opts = {
-      epochs = 1,
-      learning_rate = 0.00005,
-      log_freq = 0.5
-   }
+   math.randomseed(seed)
+   net = nn.new_neural_net(net_opts)
 
-   -- Desired curve
+   -- Desired/actual curve
    actual_curve = {
       color = {0, 1, 1, 0.9},
       points = generate_points(-20, 20, desired_fn),
@@ -59,8 +65,8 @@ function love.load()
 
    -- Generate training data
    training_data = {}
-   for i=1, 100 do
-      local x = randf(-10, 10)
+   for i=1, 300 do
+      local x = randf(desired_fn_interval[1], desired_fn_interval[2])
       table.insert(training_data, {inputs={x}, outputs={desired_fn(x)}})
    end
 
@@ -73,7 +79,10 @@ function love.load()
 end
 
 function love.draw()
+   -- Draw the graph
    graphlove.draw(graph, WIDTH, HEIGHT)
+
+   -- Print current learning rate on screen
    lg.print(("learning_rate = %.16f"):format(training_opts.learning_rate),
             0, 58)
 end

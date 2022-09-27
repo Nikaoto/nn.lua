@@ -17,7 +17,7 @@ local function generate_training_data(fn, n, seed)
    return data
 end
 
-local fn_to_discover = function(a) return math.sin(a) end
+local fn_to_discover = function(a) return a*a*a end
 
 local SEED = 1337
 
@@ -25,9 +25,9 @@ local SEED = 1337
 print("\nNet")
 math.randomseed(SEED)
 local net = nn.new_neural_net({
-   neuron_counts = {1, 6, 1},
-   act_fns = {nn.sigmoid, nn.sigmoid},
-   d_act_fns = {nn.d_sigmoid, nn.d_sigmoid},
+   neuron_counts = {1, 12, 1},
+   act_fns = {nn.sigmoid},
+   d_act_fns = {nn.d_sigmoid},
 })
 print(inspect(net))
 

@@ -1,11 +1,31 @@
 # nn.lua
-Small neural network library for Lua.
+Small neural network library in a single lua file.
+Good for learning neural networks & playing with machine learning.
 
-It:
-- passes the xor test ([`learn_xor.lua`](./learn_xor.lua)).
-- can approximate any arbitrary function ([`approx.lua`](./approx.lua)). Also
-  see screenshots below.
-- more to come from the TODO below.
+# Usage
+Simply copy `nn.lua` into your project and require it.
+
+`examples/learn_xor.lua` is a small but complete example of typical usage, which is:
+```
+-- Rrequire the module
+local nn = require("nn")
+
+-- Initialize the network
+local net = nn.new_neural_net({
+   neuron_counts = {2, 4, 1},
+   act_fns = {nil, "sigmoid", nil}
+})
+
+-- Train it
+nn.train(net, training_data, {
+   epochs = 1000,
+   learning_rate = 0.1
+})
+
+-- Use it
+local outputs = nn.feedforward(net, {inputs={10, 20}})
+print(outputs[1])
+```
 
 ## TODO
 - write a description of how to run the visual approximator w/ controls
@@ -22,9 +42,7 @@ It:
   - use matrix multiplication w/ video card instead of cartesian nested loop
 - Solve a rubik's cube
 
-
 ## Screenshots
-
 Approximating a sine wave in the range [-10, 10] using a single 100-neuron
 hidden layer using a ReLU activation function. The training data is only 100
 random samples from the sine wave from the given range.
