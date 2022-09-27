@@ -1,4 +1,4 @@
-local inspect = require("inspect")
+local inspect = require("lib/inspect")
 local nn = require("nn")
 
 local function lerp(a, b, p) return a + (b-a)*p end

@@ -2,10 +2,10 @@
 Small neural network library for Lua.
 
 It:
-- passes the xor test
+- passes the xor test ([`learn_xor.lua`](./learn_xor.lua)).
 - can approximate any arbitrary function ([`approx.lua`](./approx.lua)). Also
-  see screenshots below
-- more to come from the TODO below
+  see screenshots below.
+- more to come from the TODO below.
 
 ## TODO
 - write a description of how to run the visual approximator w/ controls

@@ -1,5 +1,4 @@
-local graphlove = {
-}
+local graphlove = {}
 
 local gl = graphlove
 local lg = love.graphics

@@ -1,5 +1,5 @@
 -- Approximate a function using a neural net while graphing both
-local graphlove = require("graphlove")
+local graphlove = require("lib/graphlove")
 local nn = require("nn")
 
 local WIDTH, HEIGHT = 1024, 720
