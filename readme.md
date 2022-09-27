@@ -6,7 +6,7 @@ Good for learning neural networks & playing with machine learning.
 Simply copy `nn.lua` into your project and require it.
 
 `examples/learn_xor.lua` is a small but complete example of typical usage, which is:
-```
+```lua
 -- Rrequire the module
 local nn = require("nn")
 
