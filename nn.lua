@@ -181,7 +181,7 @@ function nn.new_neural_net(opts)
    -- Create random biases if none given
    if not biases then
       biases = {
-         -- Input and output layers have no biases
+         -- No biases for input/output layers
          [1] = nil,
          [#net.neurons] = nil,
       }

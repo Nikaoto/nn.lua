@@ -13,8 +13,8 @@ local nn = require("nn")
 -- Initialize the network
 local net = nn.new_neural_net({
    neuron_counts = {2, 4, 1},
-   -- TODO: the act_fns don't work this way yet
-   act_fns = {nil, "sigmoid", nil}
+   act_fns = {nn.sigmoid}
+   d_act_fns = {nn.d_sigmoid}
 })
 
 -- Train it
@@ -29,13 +29,8 @@ print(outputs[1])
 ```
 
 ## TODO
-- make `act_fns` a string array (use `raw_act_fns` and `raw_d_act_fns` to hold
-  the lua functions internally)
 - write a description of how to run the visual approximator w/ controls
 - write nn.lua documentation
-- make `act_fns` array have the same count as the `neurons` array, instead of
-  `act_fns` starting from the second neuron layer. The `biases` array works this
-  way already.
 - `nn.load_neural_network()`/`nn.save_neural_network()` functions
 - get MNIST to work
 - Make a GAN
