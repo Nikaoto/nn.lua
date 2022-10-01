@@ -101,8 +101,8 @@ You need Love2D installed to run this one:
 $ love examples/approx/
 ```
 
-The controls are the arrow keys, hjkl, 'space' to train for one epoch and 'g' to
-toggle training. You should get something like this:
+The controls are the arrow keys, hjkl, and 'g' to toggle training. You should
+get something like this:
 
 ![examples/approx running in real time](./screenshots/nn-animation-approx.gif)
 
@@ -112,6 +112,7 @@ hidden layer using a ReLU activation function. The training data is only 100
 random samples from the sine wave from the given range.
 
 After approximately one hour of training:
+
 ![Sine wave after 1 hour of training](./screenshots/nn-screenshot-approx-sin-relu-1.png)
 
 Notice how the network doesn't care to fit anything beyond the range [-10, 10]
@@ -129,7 +130,6 @@ After 5 minutes:
 ![Sine wave after 3 minutes of training using sigmoid](./screenshots/nn-screenshot-approx-sin-sigmoid.png)
 
 ## TODO
-- write a description of how to run the visual approximator w/ controls
 - get MNIST to work
 - Make a GAN
 - Potential optimizations include:
