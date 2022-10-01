@@ -5,7 +5,9 @@ Good for learning neural networks & playing with machine learning.
 ## Usage
 Simply copy `nn.lua` into your project and require it.
 
-`examples/learn_xor.lua` is a small but complete example of typical usage, which is:
+`examples/learn_xor.lua` is a small but complete example of typical usage.
+
+In short:
 ```lua
 -- Rrequire the module
 local nn = require("nn")
@@ -13,8 +15,7 @@ local nn = require("nn")
 -- Initialize the network
 local net = nn.new_neural_net({
    neuron_counts = {2, 4, 1},
-   act_fns = {nn.sigmoid}
-   d_act_fns = {nn.d_sigmoid}
+   act_fns = {"sigmoid"}
 })
 
 -- Train it
@@ -28,10 +29,63 @@ local outputs = nn.feedforward(net, {inputs={10, 20}})
 print(outputs[1])
 ```
 
+
+### API
+In general, I suggest you look at `nn.lua` if you want to know the API. The code
+is commented and written to be as simple as possible. If you wish to know
+exactly what options given function accepts through the `opts` argument, just
+look at the first 5-10 lines of that function, it's all there.
+
+### `nn.new_neural_net(opts)`
+Creates a new neural network, which looks something like this:
+```lua
+{
+  act_fns = { "sigmoid" },
+  biases = {
+    [2] = { 0.59, -1.39, 2.31, -0.42 }
+  },
+  neurons = { { 1, 1 }, { 2, 2, 2, 2 }, { 3 } },
+  raw_act_fns = { <function 1> },
+  raw_d_act_fns = { <function 2> },
+  weights = {
+    { -4.79, 1.48, -4.18, 0.05, -2.8, 4.66, 0.14, -0.86 },
+    { -4.1, 4.12, -2.62, -3.72 }
+  }
+}
+```
+The weights and biases can be automatically randomized or assigned. The raw functions are used internally. The neuron values are just placeholders, used only for caching
+
+#### Saving/loading a neural network
+The `nn.new_neural_net(opts)` function can be used to initialize a new neural
+network with random weights and biases or to load an already existing one.
+
+```lua
+-- Say we create a randomized net
+local net = nn.new_neural_net({
+   neuron_counts = {2, 4, 1},
+   act_fns = {"sigmoid"},
+})
+
+-- ...
+
+-- We trained it and now want to save it to disk for later usage
+
+-- inspect() just gives a string dump of a lua table
+local net_str = inspect(nn.compress(net))
+
+-- This will write "return { ... net contents .. }" into the lua file,
+-- which makes the lua file easier to load using require()
+local file = io.open("net.lua", "w")
+file:write("return ")
+file:write(net_str)
+
+-- Some time later we want to load and use it
+local loaded_net = nn.new_neural_net(require("net"))
+print(nn.feedforward(loaded_net, {inputs={...}}))
+```
+
 ## TODO
 - write a description of how to run the visual approximator w/ controls
-- write nn.lua documentation
-- `nn.load_neural_network()`/`nn.save_neural_network()` functions
 - get MNIST to work
 - Make a GAN
 - Potential optimizations include:

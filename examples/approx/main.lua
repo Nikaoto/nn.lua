@@ -17,8 +17,7 @@ local desired_fn_interval = {-5, 5}
 local seed = 692
 local net_opts = {
    neuron_counts = {1, 100, 1},
-   act_fns = {nn.sigmoid},
-   d_act_fns = {nn.d_sigmoid},
+   act_fns = {"sigmoid"},
 }
 local training_opts = {
    epochs = 1,

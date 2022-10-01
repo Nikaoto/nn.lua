@@ -17,8 +17,7 @@ print("\nNet")
 math.randomseed(1337)
 local net = nn.new_neural_net({
    neuron_counts = {2, 4, 1},
-   act_fns = {nn.sigmoid},
-   d_act_fns = {nn.d_sigmoid},
+   act_fns = {"sigmoid"},
 })
 print(inspect(net))
 

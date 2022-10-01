@@ -43,7 +43,6 @@ end
 -- Defaults
 local def = {
    act_fns = {},
-   d_act_fns = {},
    learning_rate = 0.001,
    epochs = 1000,
    training_log_freq = 0.01,
@@ -112,13 +111,19 @@ function nn.d_sigmoid(sa) return sa * (1 - sa) end
 function nn.relu(a) return a > 0 and a or 0 end
 function nn.d_relu(a) return a > 0 and 1 or 0 end
 
+-- Maps activation function name strings to actual lua functions
+local act_fn_mapping = {
+   ["sigmoid"] = {fn = nn.sigmoid, d_fn = nn.d_sigmoid},
+   ["relu"] = {fn = nn.relu, d_fn = nn.d_relu},
+   ["linear"] = {fn = nil, d_fn = nil},
+}
+
 -- Returns a table that represents a neural network
 function nn.new_neural_net(opts)
    if not opts then opts = {} end
 
    local neuron_counts = opts.neuron_counts
    local act_fns       = opts.act_fns    or def.act_fns
-   local d_act_fns     = opts.d_act_fns  or def.d_act_fns
    local weight_min    = opts.weight_min or def.weight_min
    local weight_max    = opts.weight_max or def.weight_max
    local bias_min      = opts.bias_min   or def.bias_min
@@ -138,9 +143,26 @@ function nn.new_neural_net(opts)
       return rand_lerp(bias_min, bias_max)
    end
 
+   -- Look up activation functions by their string names to make
+   -- the two function arrays below.
+   local raw_act_fns = {}
+   local raw_d_act_fns = {}
+   local num_hid_layers = #neuron_counts - 2
+   if num_hid_layers > 0 then
+      for i=1, #neuron_counts do
+         if act_fns[i] then
+            local pair = act_fn_mapping[act_fns[i]]
+            raw_act_fns[i] = pair and pair.fn or nil
+            raw_d_act_fns[i] = pair and pair.d_fn or nil
+         end
+      end
+   end
+
    local net = {
+      neuron_counts = neuron_counts,
       act_fns = act_fns,
-      d_act_fns = d_act_fns,
+      raw_act_fns = raw_act_fns,
+      raw_d_act_fns = raw_d_act_fns,
       neurons = map(neuron_counts, make_array),
    }
 
@@ -194,6 +216,18 @@ function nn.new_neural_net(opts)
    return net
 end
 
+-- Returns a new neural network with all of the unnecessary or extra fields
+-- removed. Main use is for trimming fat before storing a network to disk.
+function nn.compress(net)
+   return {
+      neuron_counts = net.neuron_counts,
+      act_fns = net.act_fns,
+      weights = net.weights,
+      biases  = net.biases
+   }
+end
+
+-- Insert an array of inputs into the first layer of the net
 function nn.insert_inputs(net, inputs)
    for i, _ in ipairs(net.neurons[1]) do
       net.neurons[1][i] = inputs[i]
@@ -221,8 +255,8 @@ function nn.feedforward(net, opts)
          local act = dp + (net.biases[li] and net.biases[li][ni] or 0)
 
          -- Apply activation function
-         if net.act_fns and net.act_fns[li-1] then
-            net.neurons[li][ni] = net.act_fns[li-1](act)
+         if net.raw_act_fns[li-1] then
+            net.neurons[li][ni] = net.raw_act_fns[li-1](act)
          else
             net.neurons[li][ni] = act
          end
@@ -295,8 +329,8 @@ function nn.backprop(net, out, rate)
          local ni2 = 1 + (wi-1) % #net.neurons[li+1]
 
          -- pd_activation / pd_neuron
-         local a = net.d_act_fns[li] and
-                   net.d_act_fns[li](net.neurons[li+1][ni2]) or 1
+         local a = net.raw_d_act_fns[li] and
+                   net.raw_d_act_fns[li](net.neurons[li+1][ni2]) or 1
 
          -- Final nudge for this weight
          wnudges[li][wi] = -1 * rate * curr_der[ni2] * net.neurons[li][ni1] * a
@@ -310,8 +344,8 @@ function nn.backprop(net, out, rate)
 
          if net.biases[li] then
             bnudges[li][ni1] = -1 * rate * curr_der[ni2] * a *
-                  (net.d_act_fns[li-1] and
-                   net.d_act_fns[li-1](net.neurons[li][ni1]) or 1)
+                  (net.raw_d_act_fns[li-1] and
+                   net.raw_d_act_fns[li-1](net.neurons[li][ni1]) or 1)
          end
       end
 
