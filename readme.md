@@ -29,15 +29,16 @@ local outputs = nn.feedforward(net, {inputs={10, 20}})
 print(outputs[1])
 ```
 
-
 ### API
 In general, I suggest you look at `nn.lua` if you want to know the API. The code
 is commented and written to be as simple as possible. If you wish to know
 exactly what `opts` a function accepts, just look at the first 5-10 lines of
 that function, it's all there.
 
+Regardless, here are some details about the API:
+
 ### `nn.new_neural_net(opts)`
-Creates a new neural network, which looks something like this:
+Creates a new neural network, which will look something like this:
 ```lua
 {
   act_fns = { "sigmoid" },
@@ -53,11 +54,15 @@ Creates a new neural network, which looks something like this:
   }
 }
 ```
-The weights and biases can be automatically randomized or assigned. The raw functions are used internally. The neuron values are just placeholders, used only for caching
+
+The weights and biases can be randomized or assigned. The `raw_*` functions are
+used internally. The neuron values are just placeholders, used only for caching
+activations during backpropagation.
 
 #### Saving/loading a neural network
-The `nn.new_neural_net(opts)` function can be used to initialize a new neural
-network with random weights and biases or to load an already existing one.
+
+The `nn.new_neural_net(opts)` function can also be used to load and initialize
+an existing neural network.
 
 ```lua
 -- Say we create a randomized net
@@ -66,15 +71,13 @@ local net = nn.new_neural_net({
    act_fns = {"sigmoid"},
 })
 
--- ...
-
 -- We trained it and now want to save it to disk for later usage
 
--- inspect() just gives a string dump of a lua table
-local net_str = inspect(nn.compress(net))
+-- We get a string dump of the trimmed network.
+local net_str = inspect(nn.compress(net)) -- inspect() does good-enough "serialization"
 
 -- This will write "return { ... net contents .. }" into the lua file,
--- which makes the lua file easier to load using require()
+-- which makes it easier to load later using require()
 local file = io.open("net.lua", "w")
 file:write("return ")
 file:write(net_str)
@@ -84,15 +87,24 @@ local loaded_net = nn.new_neural_net(require("net"))
 print(nn.feedforward(loaded_net, {inputs={...}}))
 ```
 
-## TODO
-- write a description of how to run the visual approximator w/ controls
-- get MNIST to work
-- Make a GAN
-- Potential optimizations include:
-  - rewrite in C
-  - use SIMD
-  - use matrix multiplication w/ video card instead of cartesian nested loop
-- Solve a rubik's cube
+## Examples
+
+### Simple examples
+To run the standalone lua files, stand on the base directory of the repository and do:
+```
+$ luajit examples/learn_xor.lua
+```
+
+### Interactive function approximator example
+You need Love2D installed to run this one:
+```
+$ love examples/approx/
+```
+
+The controls are the arrow keys, hjkl, 'space' to train for one epoch and 'g' to
+toggle training. You should get something like this:
+
+![examples/approx running in real time](./screenshots/nn-animation-approx.gif)
 
 ## Screenshots
 Approximating a sine wave in the range [-10, 10] using a single 100-neuron
@@ -103,16 +115,28 @@ After approximately one hour of training:
 ![Sine wave after 1 hour of training](./screenshots/nn-screenshot-approx-sin-relu-1.png)
 
 Notice how the network doesn't care to fit anything beyond the range [-10, 10]
-as it doesn't have the data for it
+as it doesn't have the data for it.
 
 A close up:
+
 ![Close up sine wave after 1 hour of training](./screenshots/nn-screenshot-approx-sin-relu-2.png)
 
 When the same is done using a sigmoid function instead, the results are much
 better.
 
-After only 5 minutes:
+After 5 minutes:
+
 ![Sine wave after 3 minutes of training using sigmoid](./screenshots/nn-screenshot-approx-sin-sigmoid.png)
+
+## TODO
+- write a description of how to run the visual approximator w/ controls
+- get MNIST to work
+- Make a GAN
+- Potential optimizations include:
+  - rewrite in C
+  - use SIMD
+  - use matrix multiplication w/ video card instead of cartesian nested loop
+- Solve a rubik's cube
 
 ## License (3-clause BSD)
 ```

@@ -12,18 +12,20 @@ local net, training_data
 local graph, actual_curve, predicted_curve
 
 ------ Play with these variables ------
-local desired_fn = math.sin
+local desired_fn = function(x) return 0.01*x^3 end
 local desired_fn_interval = {-5, 5}
-local seed = 692
+local seed = 69
 local net_opts = {
-   neuron_counts = {1, 100, 1},
+   neuron_counts = {1, 12, 1},
    act_fns = {"sigmoid"},
 }
 local training_opts = {
    epochs = 1,
-   learning_rate = 0.001,
+   learning_rate = 0.08,
    log_freq = 0.5
 }
+local avg_loss = -1.0
+
 ---------------------------------------
 
 -- Returns a table of points that looks like
@@ -72,7 +74,11 @@ function love.load()
    -- Init a graph for our curves
    graph = graphlove.new({
       print_info = true,
-      curves = {actual_curve, predicted_curve}
+      curves = {actual_curve, predicted_curve},
+      x_off = 240,
+      y_off = -120,
+      x_scale = 55,
+      y_scale = 100,
    })
    graphlove.update(graph)
 end
@@ -84,6 +90,9 @@ function love.draw()
    -- Print current learning rate on screen
    lg.print(("learning_rate = %.16f"):format(training_opts.learning_rate),
             0, 58)
+   lg.print(("interval = {%.2f, %.2f}"):format(desired_fn_interval[1], desired_fn_interval[2]),
+            0, 73)
+   lg.print(("avg_loss = %g"):format(avg_loss), 0, 88)
 end
 
 local function get_scale_delta(scale, dt, sign)
@@ -161,13 +170,8 @@ function love.update(dt)
    end
 
    -- Train
-   if love.keyboard.isDown("space") then
-      nn.train(net, training_data, training_opts)
-      recalc_points = true
-   end
-
-   if is_training then
-      nn.train(net, training_data, training_opts)
+   if love.keyboard.isDown("space") or is_training then
+      avg_loss = nn.train(net, training_data, training_opts)
       recalc_points = true
    end
 

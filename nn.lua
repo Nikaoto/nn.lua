@@ -272,6 +272,7 @@ end
 --    { inputs = {...}, outputs = {...} },
 --    ...
 -- }
+-- Returns average loss for the last epoch.
 function nn.train(net, training_data, opts)
    if not opts then opts = {} end
 
@@ -281,10 +282,11 @@ function nn.train(net, training_data, opts)
    local log_freq        = opts.log_freq      or def.training_log_freq
    local log_every       = 1 / log_freq
 
+   local avg_loss = 0
    for iter=1, epochs do
       if shuf then shuffle_array(training_data) end
 
-      local avg_loss = 0
+      avg_loss = 0
       for _, data in ipairs(training_data) do
          local out = nn.feedforward(net, { inputs = data.inputs })
 
@@ -302,6 +304,8 @@ function nn.train(net, training_data, opts)
          print(("epoch = %i, avg_loss = %g"):format(iter, avg_loss))
       end
    end
+
+   return avg_loss
 end
 
 -- Does backpropagation for a single training example.
