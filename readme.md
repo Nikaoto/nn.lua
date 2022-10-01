@@ -33,8 +33,8 @@ print(outputs[1])
 ### API
 In general, I suggest you look at `nn.lua` if you want to know the API. The code
 is commented and written to be as simple as possible. If you wish to know
-exactly what options given function accepts through the `opts` argument, just
-look at the first 5-10 lines of that function, it's all there.
+exactly what `opts` a function accepts, just look at the first 5-10 lines of
+that function, it's all there.
 
 ### `nn.new_neural_net(opts)`
 Creates a new neural network, which looks something like this:
