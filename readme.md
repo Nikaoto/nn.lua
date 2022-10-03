@@ -1,5 +1,5 @@
 # nn.lua
-Small neural network library in a single lua file.
+Small and simple neural network library in a single lua file.
 Good for learning neural networks & playing with machine learning.
 
 ## Usage
