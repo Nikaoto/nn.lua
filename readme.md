@@ -130,13 +130,16 @@ After 5 minutes:
 ![Sine wave after 3 minutes of training using sigmoid](./screenshots/nn-screenshot-approx-sin-sigmoid.png)
 
 ## TODO
-- get MNIST to work
-- Make a GAN
+- rewrite approx to work with new graphlove
+- move lib/ into examples/.
+- get MNIST to work and make an example (http://yann.lecun.com/exdb/mnist/)
+- Make a GAN (that draws squares maybe?)
+- Solve a rubik's cube
 - Potential optimizations include:
   - rewrite in C
   - use SIMD
   - use matrix multiplication w/ video card instead of cartesian nested loop
-- Solve a rubik's cube
+
 
 ## License (3-clause BSD)
 ```
