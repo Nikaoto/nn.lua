@@ -15,6 +15,11 @@ Image file format
 xxxx     unsigned byte   ??               pixel
 
 
+Step 1: Load all images into memory
+Step 2: Create neural net
+Step 3: Train neural net using loaded images & labels
+Step 4: Save neural net
+Step 5: Test neural net against training and testing set
 ]]--
 
 local IMAGE_COUNT = 60000
@@ -41,6 +46,7 @@ function eat(file, nbytes)
    return {str:byte(1, #str)}
 end
 
+local training_data = {}
 local img
 local label
 
@@ -52,14 +58,13 @@ function next_img()
    label = lbl[1] or -1
 
    -- Read image
-   img = {}
-   for i=1, ROWS do
-      table.insert(img, eat(images_file, COLS))
-   end
+   img = eat(images_file, COLS*ROWS)
+
+   return img
 end
 
 function love.load()
-   next_img()
+   table.insert(training_data, next_img())
 end
 
 function love.draw()
@@ -74,15 +79,15 @@ function love.draw()
    lg.rectangle("line", image_x, image_y, SZ*COLS, SZ*ROWS)
 
    -- Draw image
-   for col, _ in ipairs(img) do
-      for row, _ in ipairs(img[col]) do
-         lg.setColor(1, 1, 1, img[row][col]/255)
-         lg.rectangle(
-            "fill",
-            image_x + col*SZ,
-            image_y + row*SZ,
-            SZ, SZ)
-      end
+   for i, pix in ipairs(img) do
+      lg.setColor(1, 1, 1, pix/255)
+      local col = i % COLS
+      local row = (i - col) / ROWS
+      lg.rectangle(
+         "fill",
+         image_x + col*SZ,
+         image_y + row*SZ,
+         SZ, SZ)
    end
 end
 
