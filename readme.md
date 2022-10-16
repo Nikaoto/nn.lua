@@ -15,7 +15,7 @@ local nn = require("nn")
 -- Initialize the network
 local net = nn.new_neural_net({
    neuron_counts = {2, 4, 1},
-   act_fns = {"sigmoid"}
+   act_fns = {"sigmoid", "sigmoid"}
 })
 
 -- Train it
@@ -41,7 +41,7 @@ Regardless, here are some details about the API:
 Creates a new neural network, which will look something like this:
 ```lua
 {
-  act_fns = { "sigmoid" },
+  act_fns = { "relu", "relu" },
   biases = {
     [2] = { 0.59, -1.39, 2.31, -0.42 }
   },
@@ -58,6 +58,13 @@ Creates a new neural network, which will look something like this:
 The weights and biases can be randomized or assigned. The `raw_*` functions are
 used internally. The neuron values are just placeholders, used only for caching
 activations during backpropagation.
+
+`act_fns` is a string array, which denotes the activation functions between
+neuron layers. So, if we have 4 layers and `act_fns = {"sigmoid", "relu"}`, then
+from layer 1 to layer 2 a sigmoid function will be applied and from layer 2 to
+layer 3 a relu will be applied. After that the values are `nil`, so from layer 3
+to layer 4, no function will be applied to the neuron activations, which is
+equivalent to a linear activation function.
 
 #### Saving/loading a neural network
 
@@ -130,6 +137,7 @@ After 5 minutes:
 ![Sine wave after 3 minutes of training using sigmoid](./screenshots/nn-screenshot-approx-sin-sigmoid.png)
 
 ## TODO
+- remove 'opts' from nn.feedforward and replace it with just inputs (if nil, don't use)
 - rewrite approx to work with new graphlove
 - move lib/ into examples/.
 - get MNIST to work and make an example ( http://yann.lecun.com/exdb/mnist )

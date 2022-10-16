@@ -44,6 +44,7 @@ end
 local def = {
    act_fns = {},
    learning_rate = 0.001,
+   annealing = 1,
    epochs = 1000,
    training_log_freq = 0.01,
    weight_min = -5,
@@ -277,6 +278,7 @@ function nn.train(net, training_data, opts)
    if not opts then opts = {} end
 
    local learning_rate   = opts.learning_rate or def.learning_rate
+   local annealing       = opts.annealing     or def.annealing
    local epochs          = opts.epochs        or def.epochs
    local shuf            = opts.shuf          or def.shuffle_training_data
    local log_freq        = opts.log_freq      or def.training_log_freq
@@ -301,8 +303,12 @@ function nn.train(net, training_data, opts)
 
       -- Log status
       if iter % log_every == 0 or iter == 1 then
-         print(("epoch = %i, avg_loss = %g"):format(iter, avg_loss))
+         print(("epoch = %i, avg_loss = %g, learning_rate = %g"):format(
+               iter, avg_loss, learning_rate))
       end
+
+      -- Anneal learning rate
+      learning_rate = learning_rate * annealing
    end
 
    return avg_loss
