@@ -132,7 +132,7 @@ After 5 minutes:
 ## TODO
 - rewrite approx to work with new graphlove
 - move lib/ into examples/.
-- get MNIST to work and make an example (http://yann.lecun.com/exdb/mnist/)
+- get MNIST to work and make an example ( http://yann.lecun.com/exdb/mnist )
 - Make a GAN (that draws squares maybe?)
 - Solve a rubik's cube
 - Potential optimizations include:
