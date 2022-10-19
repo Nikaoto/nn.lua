@@ -17,14 +17,14 @@ print("\nNet")
 math.randomseed(1337)
 local net = nn.new_neural_net({
    neuron_counts = {2, 4, 1},
-   act_fns = {"sigmoid"},
+   act_fns = {"sigmoid", "sigmoid"},
 })
 print(inspect(net))
 
 ------------------
 print("\nTraining")
 nn.train(net, training_data, {
-   epochs = 1000,
+   epochs = 10000,
    learning_rate = 0.1,
    log_freq = 0.005,
 })
