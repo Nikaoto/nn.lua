@@ -41,17 +41,17 @@ Regardless, here are some details about the API:
 Creates a new neural network, which will look something like this:
 ```lua
 {
-  act_fns = { "relu", "relu" },
-  biases = {
-    [2] = { 0.59, -1.39, 2.31, -0.42 }
-  },
   neurons = { { 1, 1 }, { 2, 2, 2, 2 }, { 3 } },
-  raw_act_fns = { <function 1> },
-  raw_d_act_fns = { <function 2> },
   weights = {
     { -4.79, 1.48, -4.18, 0.05, -2.8, 4.66, 0.14, -0.86 },
     { -4.1, 4.12, -2.62, -3.72 }
   }
+  biases = {
+    [2] = { 0.59, -1.39, 2.31, -0.42 }
+  },
+  act_fns = { "relu", "relu" },
+  raw_act_fns = { <function 1> },
+  raw_d_act_fns = { <function 2> }
 }
 ```
 
